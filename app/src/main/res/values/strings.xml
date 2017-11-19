@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ImageLocator</string>
+    <string name="search">Search photos nearby</string>
+</resources>
