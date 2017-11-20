@@ -34,7 +34,7 @@ public class FlickerFetcher {
             .appendQueryParameter("api_key", API_KEY)
             .appendQueryParameter("format", "json")
             .appendQueryParameter("nojsoncallback", "1")
-            .appendQueryParameter("extras", "url_s")
+            .appendQueryParameter("extras", "url_s, geo")
             .build();
 
     private List<GalleryItem> items = new ArrayList<GalleryItem>();
@@ -107,7 +107,7 @@ public class FlickerFetcher {
 
             int bytesRead = 0;
             byte[] buffer = new byte[1024];
-            while((bytesRead = in.read()) > 0){
+            while((bytesRead = in.read(buffer)) > 0){
                 out.write(buffer, 0, bytesRead);
             }
             out.close();
@@ -164,6 +164,9 @@ public class FlickerFetcher {
             if(!photoJsonObject.has("url_s"))
                 continue;
             item.setUrl(photoJsonObject.getString("url_s"));
+            item.setOwner(photoJsonObject.getString("owner"));
+            item.setLat(photoJsonObject.getDouble("latitude"));
+            item.setLon(photoJsonObject.getDouble("longitude"));
             items.add(item);
         }
     }

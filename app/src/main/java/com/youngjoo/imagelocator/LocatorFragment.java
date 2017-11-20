@@ -9,15 +9,11 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Looper;
 import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -26,6 +22,7 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.SupportMapFragment;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,11 +31,14 @@ import java.util.List;
  * Created by yjoo9_000 on 2017-11-19.
  */
 
-public class LocatorFragment extends Fragment {
+public class LocatorFragment extends SupportMapFragment {
     private static final String TAG = "LocatorFragment";
 
     private ImageView mImageView;
     private GoogleApiClient mClient;
+    private Bitmap mMapImage;
+    private GalleryItem mMapItem;
+    private Location mCurrentLocation;
 
     public static LocatorFragment newInstance(){
         return new LocatorFragment();
@@ -64,13 +64,6 @@ public class LocatorFragment extends Fragment {
                 .build();
     }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState){
-        View view = inflater.inflate(R.layout.activity_locator, container, false);
-        mImageView = (ImageView) view.findViewById(R.id.image_view);
-        return view;
-    }
 
     @Override
     public void onStart(){
@@ -135,10 +128,12 @@ public class LocatorFragment extends Fragment {
     private class SearchTask extends AsyncTask<Location, Void, String> {
         private GalleryItem mGalleryItem;
         private Bitmap mBitmap;
+        private Location mLocation;
 
         @Override
         protected  String doInBackground(Location...params){
             FlickerFetcher fetcher = new FlickerFetcher();
+            mLocation = params[0];
             List<GalleryItem> items = fetcher.searchPhotos(params[0]);
 
             if(items.size() == 0){
@@ -158,6 +153,10 @@ public class LocatorFragment extends Fragment {
 
         @Override
         protected void onPostExecute(String url){
+
+           /* Picasso.with(getActivity())
+                    .load(url)
+                    .into(mImageView);*/
             /*
             if(mBitmap != null) {
                 mImageView.setImageBitmap(mBitmap);
