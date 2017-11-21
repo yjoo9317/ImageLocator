@@ -22,9 +22,19 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -33,18 +43,24 @@ import java.util.List;
 
 public class LocatorFragment extends SupportMapFragment {
     private static final String TAG = "LocatorFragment";
+    private static final int MAX_COUNT = 20;
 
     private ImageView mImageView;
     private GoogleApiClient mClient;
     private Bitmap mMapImage;
     private GalleryItem mMapItem;
-    private Location mCurrentLocation;
+    private static Location mCurrentLocation;
+    private static GoogleMap mGoogleMap;
+    private static List<Bitmap> mNearByPhotos;
+    private static List<GalleryItem> mGalleryItems;
 
     public static LocatorFragment newInstance(){
         return new LocatorFragment();
     }
     @Override
     public void onCreate(Bundle savedInstanceState){
+        mNearByPhotos = new ArrayList<>();
+        mGalleryItems = new ArrayList<>();
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
@@ -62,6 +78,15 @@ public class LocatorFragment extends SupportMapFragment {
                     }
                 })
                 .build();
+
+        getMapAsync(new OnMapReadyCallback() {
+            @Override
+            public void onMapReady(GoogleMap googleMap) {
+                mGoogleMap = googleMap;
+                Log.i(TAG, "GoogleMap object obtained..");
+                updateUI();
+            }
+        });
     }
 
 
@@ -99,7 +124,61 @@ public class LocatorFragment extends SupportMapFragment {
         }
     }
 
+    private void updateUI() {
+        Log.i(TAG, "Update Map UI.");
+        if(mGoogleMap == null || mGalleryItems.size() == 0 ){//|| mMapImage == null){
+            Log.e(TAG, "google map or nearby photos not valid");
+            return;
+        }
+        placeMarkers();
+/*
+        LatLng itemPoint = new LatLng(mMapItem.getLat(), mMapItem.getLon());
+        LatLng myPoint = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
 
+        BitmapDescriptor photo = BitmapDescriptorFactory.fromBitmap(mMapImage);
+        MarkerOptions photoMarker = new MarkerOptions()
+                .position(itemPoint)
+                .icon(photo);
+
+        MarkerOptions myLocationMarker = new MarkerOptions()
+                .position(myPoint);
+
+        mGoogleMap.addMarker(photoMarker);
+        mGoogleMap.addMarker(myLocationMarker);
+
+        LatLngBounds bounds = new LatLngBounds.Builder()
+                .include(itemPoint)
+                .include(myPoint)
+                .build();
+        int margin = getResources().getDimensionPixelSize(R.dimen.map_inset_margin);
+        CameraUpdate update = CameraUpdateFactory.newLatLngBounds(bounds, margin);
+        mGoogleMap.animateCamera(update);*/
+    }
+
+    private void placeMarkers(){
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        for(int i = 0; i < MAX_COUNT; i++){
+            GalleryItem item = mGalleryItems.get(i);
+            BitmapDescriptor photo = BitmapDescriptorFactory.fromBitmap(mNearByPhotos.get(i));
+            LatLng position = new LatLng(item.getLat(), item.getLon());
+            MarkerOptions marker = new MarkerOptions()
+                    .position(position)
+                    .icon(photo);
+            mGoogleMap.addMarker(marker);
+            builder.include(position);
+        }
+        LatLng myPosition = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        builder.include(myPosition);
+
+        MarkerOptions myMarker = new MarkerOptions()
+                .position(myPosition);
+        mGoogleMap.addMarker(myMarker);
+
+        LatLngBounds bounds = builder.build();
+        int margin = getResources().getDimensionPixelSize(R.dimen.map_inset_margin);
+        CameraUpdate update = CameraUpdateFactory.newLatLngBounds(bounds, margin);
+        mGoogleMap.animateCamera(update);
+    }
 
 
     private void findImage(){
@@ -125,34 +204,55 @@ public class LocatorFragment extends SupportMapFragment {
         }
     };
 
-    private class SearchTask extends AsyncTask<Location, Void, String> {
+
+
+
+
+    private class SearchTask extends AsyncTask<Location, Void, Void> {
         private GalleryItem mGalleryItem;
         private Bitmap mBitmap;
         private Location mLocation;
 
         @Override
-        protected  String doInBackground(Location...params){
+        protected Void doInBackground(Location...params){
             FlickerFetcher fetcher = new FlickerFetcher();
             mLocation = params[0];
-            List<GalleryItem> items = fetcher.searchPhotos(params[0]);
+            mGalleryItems.clear();
+            mGalleryItems.addAll(fetcher.searchPhotos(params[0]));
+            //List<GalleryItem> items = fetcher.searchPhotos(params[0]);
 
-            if(items.size() == 0){
+            if(mGalleryItems.size() == 0){
                 Log.i(TAG, "Nearby Photo Not found.");
                 return null;
             }
-            mGalleryItem = items.get(0);
+            //mGalleryItem = items.get(0);
+            mNearByPhotos.clear();
+            Log.i(TAG, "downloading nearby photos.");
+            for(int i = 0; i < MAX_COUNT; i++){
+                GalleryItem item = mGalleryItems.get(i);
+                try {
+                    byte[] bytes = fetcher.getUrlBytes(item.getUrl());
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    mNearByPhotos.add(bitmap);
+                }catch(IOException e){
+                    Log.e(TAG, "Failed to download image");
+                }
+
+            }
+            Log.i(TAG, "finish downloading");
+            /*
             try{
                 byte[] bytes = fetcher.getUrlBytes(mGalleryItem.getUrl());
                 mBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
                 Log.i(TAG, "bitmap created: "+bytes.length);
             }catch(IOException e){
                 Log.i(TAG, "Unable to download bitmap at "+mGalleryItem.getUrl());
-            }
-            return mGalleryItem.getUrl();
+            }*/
+            return null;
         }
 
         @Override
-        protected void onPostExecute(String url){
+        protected void onPostExecute(Void result){
 
            /* Picasso.with(getActivity())
                     .load(url)
@@ -163,8 +263,12 @@ public class LocatorFragment extends SupportMapFragment {
                 Log.i(TAG, "setting bitmap resource");
             } else {
                 Log.i(TAG, "Not valid bitmap");
-            }
-            */
+            }*/
+
+            /*mMapImage = mBitmap;
+            mMapItem = mGalleryItem;*/
+            mCurrentLocation = mLocation;
+            updateUI();
         }
     }
 

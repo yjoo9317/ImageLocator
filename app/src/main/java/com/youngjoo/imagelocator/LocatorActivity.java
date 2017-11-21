@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -27,7 +28,15 @@ public class LocatorActivity extends SingleFragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_locator);
 
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 99);
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.ACCESS_COARSE_LOCATION}, 99);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults){
+
     }
 
     @Override
@@ -44,7 +53,7 @@ public class LocatorActivity extends SingleFragmentActivity {
             });
             errorDialog.show();
         } else {
-            Log.i(TAG, "Connected to Google Sevice");
+            Log.i(TAG, "Connected to Google Service");
         }
     }
 
